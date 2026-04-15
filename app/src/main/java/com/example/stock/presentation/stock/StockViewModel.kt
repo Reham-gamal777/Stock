@@ -2,8 +2,7 @@ package com.example.stock.presentation.stock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.stock.Domain.model.Item
-import com.example.stock.Domain.repository.StockRepository
+import com.example.stock.Domain.repository.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +25,11 @@ data class ItemMovementUiModel(
     val balanceAfter: Int
 )
 
+data class StockMovementResult(
+    val movements: List<ItemMovementUiModel>,
+    val finalBalance: Int
+)
+
 data class StockState(
     val stockItems: List<StockItemUiModel> = emptyList(),
     val filteredStockItems: List<StockItemUiModel> = emptyList(),
@@ -38,7 +42,10 @@ data class StockState(
 
 @HiltViewModel
 class StockViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val itemRepository: ItemRepository,
+    private val stockRepository: StockRepository,
+    private val inboundRepository: InboundRepository,
+    private val outboundRepository: OutboundRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StockState())
@@ -50,13 +57,12 @@ class StockViewModel @Inject constructor(
 
     fun loadStockData() {
         viewModelScope.launch {
-            repository.getAllItems().collectLatest { items ->
+            itemRepository.getAllItems().collectLatest { items ->
                 val uiModels = items.map { item ->
-                    val inTotal = repository.getItemInboundDetails(item.id).sumOf { it.amount }
-                    val outTotal = repository.getItemOutboundDetails(item.id).sumOf { it.amount }
-                    val returnedTotal = repository.getItemReturnedDetails(item.id).sumOf { it.amount }
+                    val inTotal = stockRepository.getItemInboundDetails(item.id).sumOf { it.amount }
+                    val outTotal = stockRepository.getItemOutboundDetails(item.id).sumOf { it.amount }
+                    val returnedTotal = stockRepository.getItemReturnedDetails(item.id).sumOf { it.amount }
                     
-                    // المعادلة: وارد - صادر + مرتجع عملاء
                     val balance = inTotal - outTotal + returnedTotal
                     StockItemUiModel(item.id, item.itemName, balance)
                 }
@@ -84,29 +90,26 @@ class StockViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true, selectedItemName = itemName)
             
             val movements = mutableListOf<ItemMovementUiModel>()
-            val inDetails = repository.getItemInboundDetails(itemId)
-            val outDetails = repository.getItemOutboundDetails(itemId)
-            val retDetails = repository.getItemReturnedDetails(itemId)
+            val inDetails = stockRepository.getItemInboundDetails(itemId)
+            val outDetails = stockRepository.getItemOutboundDetails(itemId)
+            val retDetails = stockRepository.getItemReturnedDetails(itemId)
             
             var runningBalance = 0
             
-            // 1. إضافة الواردات
             inDetails.forEach {
                 runningBalance += it.amount
-                val data = repository.getInboundById(it.inboundId)
+                val data = inboundRepository.getInboundById(it.inboundId)
                 movements.add(ItemMovementUiModel(data?.date ?: "-", "شراء (${data?.invoiceNumber ?: "#"})", it.amount, null, runningBalance))
             }
             
-            // 2. إضافة المرتجعات (تزيد المخزن)
             retDetails.forEach {
                 runningBalance += it.amount
                 movements.add(ItemMovementUiModel("مرتجع", "مرتجع من عميل", it.amount, null, runningBalance))
             }
 
-            // 3. إضافة الصادرات (تنقص المخزن)
             outDetails.forEach {
                 runningBalance -= it.amount
-                val data = repository.getOutboundById(it.outboundId.toLong())
+                val data = outboundRepository.getOutboundById(it.outboundId.toLong())
                 movements.add(ItemMovementUiModel(data?.outboundDate?.take(10) ?: "-", "بيع (${data?.invoiceNumber ?: "#"})", null, it.amount, runningBalance))
             }
 
@@ -120,9 +123,8 @@ class StockViewModel @Inject constructor(
 
     fun addNewItem(name: String) {
         viewModelScope.launch {
-            repository.insertItem(Item(itemName = name, itemNum = 0))
+            itemRepository.insertItem(com.example.stock.Domain.model.Item(itemName = name, itemNum = 0))
             loadStockData()
         }
     }
 }
-

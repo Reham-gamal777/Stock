@@ -3,7 +3,9 @@ package com.example.stock.presentation.returned
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stock.Domain.model.*
-import com.example.stock.Domain.repository.StockRepository
+import com.example.stock.Domain.repository.CustomerRepository
+import com.example.stock.Domain.repository.ItemRepository
+import com.example.stock.Domain.repository.ReturnedRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +44,9 @@ data class ReturnedState(
 
 @HiltViewModel
 class ReturnedViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val returnedRepository: ReturnedRepository,
+    private val customerRepository: CustomerRepository,
+    private val itemRepository: ItemRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ReturnedState())
@@ -55,12 +59,12 @@ class ReturnedViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            repository.getAllCustomers().collectLatest { customers ->
+            customerRepository.getAllCustomers().collectLatest { customers ->
                 _state.value = _state.value.copy(allCustomers = customers)
             }
         }
         viewModelScope.launch {
-            repository.getAllItems().collectLatest { items ->
+            itemRepository.getAllItems().collectLatest { items ->
                 _state.value = _state.value.copy(allItems = items)
             }
         }
@@ -68,10 +72,10 @@ class ReturnedViewModel @Inject constructor(
 
     private fun loadReturns() {
         viewModelScope.launch {
-            repository.getAllReturned().collectLatest { returns ->
+            returnedRepository.getAllReturned().collectLatest { returns ->
                 val uiReturns = returns.map { returned ->
-                    val customer = repository.getCustomerById(returned.customerId)
-                    val details = repository.getReturnedDetails(returned.id)
+                    val customer = customerRepository.getCustomerById(returned.customerId)
+                    val details = returnedRepository.getReturnedDetails(returned.id)
                     ReturnedUiModel(returned, customer?.customerName ?: "غير معروف", details.sumOf { it.amount })
                 }
                 _state.value = _state.value.copy(
@@ -135,7 +139,7 @@ class ReturnedViewModel @Inject constructor(
                 )
             }
             
-            repository.insertReturned(returned, details)
+            returnedRepository.insertReturned(returned, details)
             _state.value = _state.value.copy(
                 selectedCustomer = null,
                 newReturnedItems = emptyList()
@@ -146,9 +150,9 @@ class ReturnedViewModel @Inject constructor(
     fun onReturnedClick(returnedUi: ReturnedUiModel) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            val details = repository.getReturnedDetails(returnedUi.returned.id)
+            val details = returnedRepository.getReturnedDetails(returnedUi.returned.id)
             val detailUiModels = details.map { detail ->
-                val item = repository.getItemById(detail.itemId)
+                val item = itemRepository.getItemById(detail.itemId)
                 ReturnedDetailUiModel(detail.itemId, item?.itemName ?: "غير معروف", detail.amount, detail.price)
             }
             _state.value = _state.value.copy(

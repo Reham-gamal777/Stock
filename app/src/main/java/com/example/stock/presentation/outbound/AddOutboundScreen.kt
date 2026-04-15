@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,148 +82,75 @@ fun AddOutboundScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Invoice Details
+                // رقم الفاتورة
                 item {
-                    Text("بيانات الفاتورة الأساسية", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = invoiceNumber,
                         onValueChange = { invoiceNumber = it },
                         label = { Text("رقم الفاتورة") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        leadingIcon = { Icon(Icons.Default.Numbers, contentDescription = null) }
+                        leadingIcon = { Icon(Icons.Default.Numbers, null) }
                     )
                 }
 
-                // Customer Selection
+                // اختيار العميل
                 item {
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        onClick = { showCustomerDialog = true }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { showCustomerDialog = true },
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("العميل", fontSize = 12.sp, color = Color.Gray)
-                                Text(
-                                    state.selectedCustomer?.customerName ?: "اضغط لاختيار العميل",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                            }
+                            Text(state.selectedCustomer?.customerName ?: "اختر العميل", fontWeight = FontWeight.Bold)
                             Spacer(Modifier.weight(1f))
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.ArrowDropDown, null)
                         }
                     }
                 }
 
-                // Items Section Header
+                // الأصناف المختارة
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("الأصناف المختارة", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Button(
-                            onClick = { showItemDialog = true },
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("الأصناف المختارة", fontWeight = FontWeight.Bold)
+                        Button(onClick = { showItemDialog = true }) {
+                            Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(4.dp))
                             Text("إضافة صنف")
                         }
                     }
                 }
 
-                // Selected Items List
-                if (state.newOutboundItems.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .background(Color.White, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("قم بإضافة أصناف للفاتورة", color = Color.Gray)
-                        }
-                    }
-                } else {
-                    items(state.newOutboundItems) { detail ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(detail.itemName, fontWeight = FontWeight.Bold)
-                                    Text("${detail.amount} قطعة × ${detail.price} ج.م", fontSize = 12.sp, color = Color.Gray)
-                                }
-                                Text("${detail.total} ج.م", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                IconButton(onClick = { viewModel.removeDetailFromNewOutbound(detail) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Money Received & Summary
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    OutlinedTextField(
-                        value = moneyReceived,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) moneyReceived = it },
-                        label = { Text("المبلغ المحصل") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null) },
-                        suffix = { Text("ج.م") }
-                    )
-                }
-
-                item {
-                    val total = state.newOutboundItems.sumOf { it.total }
+                items(state.newOutboundItems) { item ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("إجمالي الفاتورة:", fontWeight = FontWeight.Bold)
-                            Text("$total ج.م", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32), fontSize = 18.sp)
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(item.itemName, fontWeight = FontWeight.Bold)
+                                Text("${item.amount} قطعة × ${item.price} ج.م", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            Text("${item.total} ج.م", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            IconButton(onClick = { viewModel.removeDetailFromNewOutbound(item) }) {
+                                Icon(Icons.Default.Delete, null, tint = Color.Red)
+                            }
                         }
                     }
                 }
             }
         }
 
-        // --- Dialogs ---
-
         if (showCustomerDialog) {
             SelectionDialog(
                 title = "اختر العميل",
                 items = state.allCustomers,
                 onDismiss = { showCustomerDialog = false },
-                onSelect = { 
-                    viewModel.selectCustomer(it)
-                    showCustomerDialog = false
-                },
+                onSelect = { viewModel.selectCustomer(it); showCustomerDialog = false },
                 itemLabel = { it.customerName }
             )
         }
@@ -238,6 +168,104 @@ fun AddOutboundScreen(
     }
 }
 
+@Composable
+fun AddItemDialog(
+    items: List<Item>,
+    onDismiss: () -> Unit,
+    onConfirm: (Item, Int, Double) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
+    var selectedItem by remember { mutableStateOf<Item?>(null) }
+    var amountText by remember { mutableStateOf(TextFieldValue("1")) }
+    var priceText by remember { mutableStateOf(TextFieldValue("")) }
+
+    val filteredItems = items.filter { it.itemName.contains(searchQuery.text, ignoreCase = true) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("إضافة صنف للفاتورة", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                
+                if (selectedItem == null) {
+                    // حقل البحث
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("ابحث عن صنف...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = { Icon(Icons.Default.Search, null) },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    
+                    // قائمة النتائج
+                    LazyColumn(modifier = Modifier.heightIn(max = 250.dp)) {
+                        if (filteredItems.isEmpty()) {
+                            item {
+                                Text("لا يوجد أصناف بهذا الاسم", color = Color.Gray, modifier = Modifier.padding(16.dp))
+                            }
+                        }
+                        items(filteredItems) { item ->
+                            ListItem(
+                                headlineContent = { Text(item.itemName, fontWeight = FontWeight.Medium) },
+                                leadingContent = { Icon(Icons.Default.Inventory2, null, tint = Color.Gray) },
+                                modifier = Modifier.clickable { selectedItem = item }
+                            )
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                        }
+                    }
+                } else {
+                    // واجهة إدخال الكمية والسعر بعد اختيار الصنف
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5))) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Inventory2, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(8.dp))
+                            Text(selectedItem!!.itemName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { selectedItem = null }) { Icon(Icons.Default.Close, null) }
+                        }
+                    }
+                    
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = amountText,
+                            onValueChange = { amountText = it },
+                            label = { Text("الكمية") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        OutlinedTextField(
+                            value = priceText,
+                            onValueChange = { priceText = it },
+                            label = { Text("السعر") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                    
+                    Button(
+                        onClick = { 
+                            onConfirm(selectedItem!!, amountText.text.toIntOrNull() ?: 1, priceText.text.toDoubleOrNull() ?: 0.0) 
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = priceText.text.isNotEmpty() && amountText.text.isNotEmpty()
+                    ) {
+                        Text("إضافة للفاتورة", fontWeight = FontWeight.Bold)
+                    }
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("إلغاء", color = Color.Gray)
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> SelectionDialog(
@@ -247,14 +275,12 @@ fun <T> SelectionDialog(
     onSelect: (T) -> Unit,
     itemLabel: (T) -> String
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredItems = items.filter { itemLabel(it).contains(searchQuery, ignoreCase = true) }
+    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
+    val filteredItems = items.filter { itemLabel(it).contains(searchQuery.text, ignoreCase = true) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.7f),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.7f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
@@ -266,8 +292,7 @@ fun <T> SelectionDialog(
                     onValueChange = { searchQuery = it },
                     placeholder = { Text("بحث...") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Default.Search, null) }
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -278,92 +303,6 @@ fun <T> SelectionDialog(
                         )
                         HorizontalDivider()
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AddItemDialog(
-    items: List<Item>,
-    onDismiss: () -> Unit,
-    onConfirm: (Item, Int, Double) -> Unit
-) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedItem by remember { mutableStateOf<Item?>(null) }
-    var amount by remember { mutableStateOf("1") }
-    var price by remember { mutableStateOf("") }
-
-    val filteredItems = items.filter { it.itemName.contains(searchQuery, ignoreCase = true) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("إضافة صنف للفاتورة", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                
-                if (selectedItem == null) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("ابحث عن صنف...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                        items(filteredItems) { item ->
-                            ListItem(
-                                headlineContent = { Text(item.itemName) },
-                                modifier = Modifier.clickable { selectedItem = item }
-                            )
-                            HorizontalDivider()
-                        }
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(selectedItem!!.itemName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { selectedItem = null }) { Text("تغيير") }
-                        }
-                    }
-                    
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = amount,
-                            onValueChange = { if (it.all { c -> c.isDigit() }) amount = it },
-                            label = { Text("الكمية") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = price,
-                            onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) price = it },
-                            label = { Text("السعر") },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    
-                    Button(
-                        onClick = { 
-                            selectedItem?.let { 
-                                onConfirm(it, amount.toIntOrNull() ?: 1, price.toDoubleOrNull() ?: 0.0) 
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = selectedItem != null && price.isNotEmpty()
-                    ) {
-                        Text("إضافة")
-                    }
-                }
-                
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text("إلغاء")
                 }
             }
         }

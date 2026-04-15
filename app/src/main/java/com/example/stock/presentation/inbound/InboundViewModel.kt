@@ -3,7 +3,8 @@ package com.example.stock.presentation.inbound
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stock.Domain.model.*
-import com.example.stock.Domain.repository.StockRepository
+import com.example.stock.Domain.repository.InboundRepository
+import com.example.stock.Domain.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +39,8 @@ data class InboundState(
 
 @HiltViewModel
 class InboundViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val inboundRepository: InboundRepository,
+    private val itemRepository: ItemRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InboundState())
@@ -51,7 +53,7 @@ class InboundViewModel @Inject constructor(
 
     private fun loadItems() {
         viewModelScope.launch {
-            repository.getAllItems().collectLatest { items ->
+            itemRepository.getAllItems().collectLatest { items ->
                 _state.value = _state.value.copy(allItems = items)
             }
         }
@@ -59,9 +61,9 @@ class InboundViewModel @Inject constructor(
 
     private fun loadInbounds() {
         viewModelScope.launch {
-            repository.getAllInbounds().collectLatest { inbounds ->
+            inboundRepository.getAllInbounds().collectLatest { inbounds ->
                 val uiInbounds = inbounds.map { inbound ->
-                    val details = repository.getInboundDetails(inbound.id)
+                    val details = inboundRepository.getInboundDetails(inbound.id)
                     InboundUiModel(inbound, details.sumOf { it.amount })
                 }
                 _state.value = _state.value.copy(
@@ -93,9 +95,9 @@ class InboundViewModel @Inject constructor(
     fun onInboundClick(inboundUi: InboundUiModel) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            val details = repository.getInboundDetails(inboundUi.inbound.id)
+            val details = inboundRepository.getInboundDetails(inboundUi.inbound.id)
             val detailUiModels = details.map { detail ->
-                val item = repository.getItemById(detail.itemId)
+                val item = itemRepository.getItemById(detail.itemId)
                 InboundDetailUiModel(detail.itemId, item?.itemName ?: "غير معروف", detail.amount)
             }
             _state.value = _state.value.copy(
@@ -125,7 +127,7 @@ class InboundViewModel @Inject constructor(
             val details = _state.value.newInboundItems.map {
                 InboundDetails(inboundId = 0, itemId = it.itemId, amount = it.amount)
             }
-            repository.insertInbound(inbound, details)
+            inboundRepository.insertInbound(inbound, details)
             _state.value = _state.value.copy(newInboundItems = emptyList())
         }
     }

@@ -2,7 +2,7 @@ package com.example.stock.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.stock.Domain.repository.StockRepository
+import com.example.stock.Domain.repository.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,34 +22,51 @@ data class HomeState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val itemRepository: ItemRepository,
+    private val customerRepository: CustomerRepository,
+    private val inboundRepository: InboundRepository,
+    private val outboundRepository: OutboundRepository,
+    private val returnedRepository: ReturnedRepository,
+    private val paymentRepository: PaymentRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
     init {
-        // Here you would ideally have flows in the repository for these counts
-        // For now, I'll just collect what we have and update the state
+        observeAllCounts()
+    }
+
+    private fun observeAllCounts() {
         viewModelScope.launch {
-            repository.getAllItems().collectLatest { items ->
-                // This is just a placeholder, update counts based on actual data
-                _state.value = _state.value.copy(stockCount = items.size)
+            itemRepository.getAllItems().collectLatest { 
+                _state.value = _state.value.copy(stockCount = it.size) 
             }
         }
-        
         viewModelScope.launch {
-            repository.getAllCustomers().collectLatest { customers ->
-                _state.value = _state.value.copy(customerCount = customers.size)
+            customerRepository.getAllCustomers().collectLatest { 
+                _state.value = _state.value.copy(customerCount = it.size) 
             }
         }
-        
-        // Mocking other counts for the UI demonstration
-        _state.value = _state.value.copy(
-            outboundCount = 56,
-            inboundCount = 64,
-            returnCount = 45,
-            paymentCount = 63
-        )
+        viewModelScope.launch {
+            outboundRepository.getAllOutbounds().collectLatest { 
+                _state.value = _state.value.copy(outboundCount = it.size) 
+            }
+        }
+        viewModelScope.launch {
+            inboundRepository.getAllInbounds().collectLatest { 
+                _state.value = _state.value.copy(inboundCount = it.size) 
+            }
+        }
+        viewModelScope.launch {
+            returnedRepository.getAllReturned().collectLatest { 
+                _state.value = _state.value.copy(returnCount = it.size) 
+            }
+        }
+        viewModelScope.launch {
+            paymentRepository.getAllPayments().collectLatest { 
+                _state.value = _state.value.copy(paymentCount = it.size)
+            }
+        }
     }
 }

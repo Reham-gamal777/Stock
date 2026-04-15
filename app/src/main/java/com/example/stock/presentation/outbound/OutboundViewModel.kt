@@ -3,7 +3,9 @@ package com.example.stock.presentation.outbound
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stock.Domain.model.*
-import com.example.stock.Domain.repository.StockRepository
+import com.example.stock.Domain.repository.CustomerRepository
+import com.example.stock.Domain.repository.ItemRepository
+import com.example.stock.Domain.repository.OutboundRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +46,9 @@ data class OutboundState(
 
 @HiltViewModel
 class OutboundViewModel @Inject constructor(
-    private val repository: StockRepository
+    private val outboundRepository: OutboundRepository,
+    private val customerRepository: CustomerRepository,
+    private val itemRepository: ItemRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OutboundState())
@@ -57,12 +61,12 @@ class OutboundViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            repository.getAllCustomers().collectLatest { customers ->
+            customerRepository.getAllCustomers().collectLatest { customers ->
                 _state.value = _state.value.copy(allCustomers = customers)
             }
         }
         viewModelScope.launch {
-            repository.getAllItems().collectLatest { items ->
+            itemRepository.getAllItems().collectLatest { items ->
                 _state.value = _state.value.copy(allItems = items)
             }
         }
@@ -70,10 +74,10 @@ class OutboundViewModel @Inject constructor(
 
     private fun loadOutbounds() {
         viewModelScope.launch {
-            repository.getAllOutbounds().collectLatest { outbounds ->
+            outboundRepository.getAllOutbounds().collectLatest { outbounds ->
                 val uiOutbounds = outbounds.map { outbound ->
-                    val customer = repository.getCustomerById(outbound.customerId)
-                    val details = repository.getOutboundDetails(outbound.id.toLong())
+                    val customer = customerRepository.getCustomerById(outbound.customerId)
+                    val details = outboundRepository.getOutboundDetails(outbound.id.toLong())
                     val total = details.sumOf { it.amount * it.price }
                     OutboundUiModel(
                         outbound = outbound,
@@ -89,11 +93,11 @@ class OutboundViewModel @Inject constructor(
     fun onOutboundClick(outboundUi: OutboundUiModel) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
-            val customer = repository.getCustomerById(outboundUi.outbound.customerId)
-            val details = repository.getOutboundDetails(outboundUi.outbound.id.toLong())
+            val customer = customerRepository.getCustomerById(outboundUi.outbound.customerId)
+            val details = outboundRepository.getOutboundDetails(outboundUi.outbound.id.toLong())
             
             val detailUiModels = details.map { detail ->
-                val item = repository.getItemById(detail.itemId)
+                val item = itemRepository.getItemById(detail.itemId)
                 OutboundDetailUiModel(
                     itemId = detail.itemId,
                     itemName = item?.itemName ?: "صنف غير معروف",
@@ -164,7 +168,7 @@ class OutboundViewModel @Inject constructor(
                 )
             }
             
-            repository.insertOutbound(outbound, details)
+            outboundRepository.insertOutbound(outbound, details)
             // Clear state after save
             _state.value = _state.value.copy(
                 selectedCustomer = null,
