@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -32,12 +35,12 @@ fun AddInboundScreen(
 ) {
     val state by viewModel.state.collectAsState()
     
-    var invoiceNumber by remember { mutableStateOf("") }
-    var supplierName by remember { mutableStateOf("") }
+    var invoiceNumber by remember { mutableStateOf(TextFieldValue("")) }
+    var supplierName by remember { mutableStateOf(TextFieldValue("")) }
+    var amountText by remember { mutableStateOf(TextFieldValue("")) }
     
     var showItemDialog by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<Item?>(null) }
-    var amount by remember { mutableStateOf("") }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Scaffold(
@@ -54,7 +57,7 @@ fun AddInboundScreen(
             bottomBar = {
                 Button(
                     onClick = { 
-                        viewModel.saveInbound(invoiceNumber, supplierName)
+                        viewModel.saveInbound(invoiceNumber.text, supplierName.text)
                         onBack()
                     },
                     modifier = Modifier
@@ -62,7 +65,7 @@ fun AddInboundScreen(
                         .padding(16.dp)
                         .height(56.dp),
                     shape = RoundedCornerShape(24.dp),
-                    enabled = invoiceNumber.isNotEmpty() && state.newInboundItems.isNotEmpty()
+                    enabled = invoiceNumber.text.isNotEmpty() && state.newInboundItems.isNotEmpty()
                 ) {
                     Text("حفظ واعتماد فاتورة الوارد", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
@@ -76,6 +79,7 @@ fun AddInboundScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // القسم العلوي: بيانات الفاتورة والمورد
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -116,6 +120,7 @@ fun AddInboundScreen(
                     }
                 }
 
+                // قسم إضافة الأصناف للقائمة
                 item {
                     Text("إضافة أصناف للوارد", fontWeight = FontWeight.Bold)
                     Card(
@@ -131,16 +136,17 @@ fun AddInboundScreen(
                                     colors = CardDefaults.cardColors(containerColor = Color.White)
                                 ) {
                                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(selectedItem?.itemName ?: "اختر الصنف", modifier = Modifier.weight(1f))
+                                        Text(selectedItem?.itemName ?: "اختر الصنف", modifier = Modifier.weight(1f), maxLines = 1)
                                         Icon(Icons.Default.ArrowDropDown, null)
                                     }
                                 }
                                 OutlinedTextField(
-                                    value = amount,
-                                    onValueChange = { if (it.all { c -> c.isDigit() }) amount = it },
+                                    value = amountText,
+                                    onValueChange = { amountText = it },
                                     label = { Text("الكمية") },
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(8.dp),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
                                 )
                             }
@@ -148,15 +154,15 @@ fun AddInboundScreen(
                             Button(
                                 onClick = { 
                                     selectedItem?.let { 
-                                        viewModel.addItemToNewInbound(it, amount.toIntOrNull() ?: 0)
+                                        viewModel.addItemToNewInbound(it, amountText.text.toIntOrNull() ?: 0)
                                         selectedItem = null
-                                        amount = ""
+                                        amountText = TextFieldValue("")
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B)),
                                 shape = RoundedCornerShape(24.dp),
-                                enabled = selectedItem != null && amount.isNotEmpty()
+                                enabled = selectedItem != null && amountText.text.isNotEmpty()
                             ) {
                                 Text("إضافة الصنف للقائمة", fontWeight = FontWeight.Bold)
                             }
@@ -164,6 +170,7 @@ fun AddInboundScreen(
                     }
                 }
 
+                // رأس الجدول
                 item {
                     Row(
                         modifier = Modifier
@@ -173,9 +180,11 @@ fun AddInboundScreen(
                     ) {
                         Text("الصنف", modifier = Modifier.weight(2f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         Text("الكمية", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Spacer(Modifier.width(48.dp)) // لمكان زر الحذف
                     }
                 }
 
+                // قائمة الأصناف المضافة فعلياً
                 items(state.newInboundItems) { item ->
                     Row(
                         modifier = Modifier
@@ -185,12 +194,16 @@ fun AddInboundScreen(
                     ) {
                         Text(item.itemName, modifier = Modifier.weight(2f), textAlign = TextAlign.Center)
                         Text(item.amount.toString(), modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                        IconButton(onClick = { viewModel.removeDetailFromNewInbound(item) }) {
+                            Icon(Icons.Default.Delete, null, tint = Color.Red)
+                        }
                     }
                     HorizontalDivider()
                 }
             }
         }
 
+        // نافذة اختيار الصنف
         if (showItemDialog) {
             SelectionDialog(
                 title = "اختر الصنف",

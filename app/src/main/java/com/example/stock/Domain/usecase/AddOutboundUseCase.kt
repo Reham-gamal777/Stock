@@ -4,6 +4,7 @@ import com.example.stock.Domain.model.Outbound
 import com.example.stock.Domain.model.OutboundDetails
 import com.example.stock.Domain.repository.CustomerRepository
 import com.example.stock.Domain.repository.OutboundRepository
+import com.example.stock.Domain.repository.ItemRepository
 import javax.inject.Inject
 
 class AddOutboundUseCase @Inject constructor(
@@ -11,17 +12,21 @@ class AddOutboundUseCase @Inject constructor(
     private val customerRepository: CustomerRepository
 ) {
     suspend operator fun invoke(outbound: Outbound, details: List<OutboundDetails>) {
-        // 1. تسجيل الفاتورة
+        // 1. تسجيل عملية البيع
         outboundRepository.insertOutbound(outbound, details)
 
-        // 2. تحديث مديونية العميل (منطق العمل)
+        // 2. حساب إجمالي الفاتورة وتحديث مديونية العميل
+        val totalInvoice = details.sumOf { it.amount * it.price }
+        val remainingAmount = totalInvoice - outbound.moneyReceived
+        
         val customer = customerRepository.getCustomerById(outbound.customerId)
         customer?.let {
-            val totalInvoice = details.sumOf { d -> d.amount * d.price }
-            val remainingOnCustomer = totalInvoice - outbound.moneyReceived
             customerRepository.insertCustomer(
-                it.copy(customerDebt = it.customerDebt + remainingOnCustomer)
+                it.copy(customerDebt = it.customerDebt + remainingAmount)
             )
         }
+        
+        // ملاحظة: الرصيد في المخزن يتم حسابه تلقائياً في GetStockBalanceUseCase 
+        // بناءً على (إجمالي الوارد - إجمالي الصادر) لضمان الدقة المحاسبية.
     }
 }
